@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Income Tracker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f2f2f2;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #007bff;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #output p {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Daily Income Form</h2>
+    <form id="incomeForm">
+      <label for="date">Date:</label>
+      <input type="date" id="date" required>
+
+      <label for="name">Name:</label>
+      <input type="text" id="name" required>
+
+      <label for="salary">Salary:</label>
+      <input type="number" id="salary" required>
+
+      <label for="days">Monthly Job Days:</label>
+      <input type="number" id="days" required>
+
+      <label for="dailyIncome">Daily Income:</label>
+      <input type="text" id="dailyIncome" readonly>
+
+      <label for="workType">Work Time:</label>
+      <select id="workType">
+        <option value="full">Full Time</option>
+        <option value="partial">Not Full Time</option>
+      </select>
+
+      <div id="partialSection" style="display:none">
+        <label for="hourPrice">Per Hour Price:</label>
+        <input type="number" id="hourPrice">
+
+        <label for="hoursWorked">Today Completed Hours:</label>
+        <input type="number" id="hoursWorked">
+
+        <label for="reason">Reason (Optional):</label>
+        <input type="text" id="reason">
+
+        <label for="todayIncome">Today Income:</label>
+        <input type="text" id="todayIncome" readonly>
+      </div>
+
+      <button type="button" onclick="saveData()">Save</button>
+      <button type="button" onclick="displayData()">Display</button>
+      <button type="button" onclick="generatePDF()">PDF Download</button>
+      <button type="reset">Reset</button>
+    </form>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const salary = document.getElementById('salary');
+    const days = document.getElementById('days');
+    const dailyIncome = document.getElementById('dailyIncome');
+    const workType = document.getElementById('workType');
+    const partialSection = document.getElementById('partialSection');
+    const hourPrice = document.getElementById('hourPrice');
+    const hoursWorked = document.getElementById('hoursWorked');
+    const todayIncome = document.getElementById('todayIncome');
+
+    // Store static user info once
+    let userInfoStored = false;
+    let userInfo = {};
+
+    salary.addEventListener('input', updateDailyIncome);
+    days.addEventListener('input', updateDailyIncome);
+
+    function updateDailyIncome() {
+      const sal = parseFloat(salary.value);
+      const d = parseFloat(days.value);
+      if (!isNaN(sal) && !isNaN(d) && d > 0) {
+        dailyIncome.value = (sal / d).toFixed(2);
+      }
+    }
+
+    workType.addEventListener('change', () => {
+      if (workType.value === 'partial') {
+        partialSection.style.display = 'block';
+      } else {
+        partialSection.style.display = 'none';
+        todayIncome.value = dailyIncome.value;
+      }
+    });
+
+    hourPrice.addEventListener('input', updateTodayIncome);
+    hoursWorked.addEventListener('input', updateTodayIncome);
+
+    function updateTodayIncome() {
+      const price = parseFloat(hourPrice.value);
+      const hours = parseFloat(hoursWorked.value);
+      if (!isNaN(price) && !isNaN(hours)) {
+        todayIncome.value = (price * hours).toFixed(2);
+      }
+    }
+
+    function saveData() {
+      const date = document.getElementById('date').value;
+      const income = workType.value === 'full' ? dailyIncome.value : todayIncome.value;
+      const reason = document.getElementById('reason').value;
+
+      if (!userInfoStored) {
+        userInfo = {
+          name: document.getElementById('name').value,
+          salary: document.getElementById('salary').value,
+          days: document.getElementById('days').value
+        };
+        userInfoStored = true;
+      }
+
+      if (date && income) {
+        const savedData = JSON.parse(localStorage.getItem('dailyIncomeData')) || [];
+        savedData.push({ date, income, reason });
+        localStorage.setItem('dailyIncomeData', JSON.stringify(savedData));
+        alert('Data saved successfully!');
+      } else {
+        alert('Please fill in the required fields.');
+      }
+    }
+
+    function displayData() {
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+      const savedData = JSON.parse(localStorage.getItem('dailyIncomeData')) || [];
+
+      if (savedData.length === 0) {
+        output.innerHTML = '<p>No data to display.</p>';
+        return;
+      }
+
+      if (userInfoStored) {
+        output.innerHTML += `<p>Name: ${userInfo.name}</p>`;
+        output.innerHTML += `<p>Salary: ₹${userInfo.salary}</p>`;
+        output.innerHTML += `<p>Monthly Job Days: ${userInfo.days}</p>`;
+        output.innerHTML += '<hr />';
+      }
+
+      let total = 0;
+      savedData.forEach(item => {
+        const p = document.createElement('p');
+        p.style.fontWeight = 'bold';
+        p.textContent = `Date: ${item.date} | Income: ₹${parseFloat(item.income).toFixed(2)}` + (item.reason ? ` | Reason: ${item.reason}` : '');
+        output.appendChild(p);
+        total += parseFloat(item.income);
+      });
+
+      const hr = document.createElement('hr');
+      output.appendChild(hr);
+
+      const totalText = document.createElement('p');
+      totalText.style.fontWeight = 'bold';
+      totalText.textContent = `Total Income: ₹${total.toFixed(2)}`;
+      output.appendChild(totalText);
+    }
+
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 10;
+      doc.setFontSize(12);
+      const savedData = JSON.parse(localStorage.getItem('dailyIncomeData')) || [];
+      let total = 0;
+      savedData.forEach(item => {
+        if (y > 270) {
+          doc.addPage();
+          y = 10;
+        }
+        doc.text(`Date: ${item.date} | Income: ₹${item.income}` + (item.reason ? ` | Reason: ${item.reason}` : ''), 10, y);
+        y += 10;
+        total += parseFloat(item.income);
+      });
+      doc.text(`Total Income: ₹${total.toFixed(2)}`, 10, y + 10);
+      doc.save('daily_income.pdf');
+    }
+
+    document.getElementById('incomeForm').addEventListener('reset', () => {
+      localStorage.removeItem('dailyIncomeData');
+      userInfoStored = false;
+      userInfo = {};
+      document.getElementById('output').innerHTML = '';
+    });
+  </script>
+</body>
+</html>
