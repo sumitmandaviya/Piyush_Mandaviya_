@@ -98,6 +98,7 @@
   </div>
 
   <script>
+    const nameField = document.getElementById('name');
     const salary = document.getElementById('salary');
     const days = document.getElementById('days');
     const dailyIncome = document.getElementById('dailyIncome');
@@ -107,9 +108,16 @@
     const hoursWorked = document.getElementById('hoursWorked');
     const todayIncome = document.getElementById('todayIncome');
 
-    // Store static user info once
-    let userInfoStored = false;
-    let userInfo = {};
+    // Populate static info if already saved
+    window.onload = function() {
+      const user = JSON.parse(localStorage.getItem('userInfo'));
+      if (user) {
+        nameField.value = user.name;
+        salary.value = user.salary;
+        days.value = user.days;
+        updateDailyIncome();
+      }
+    };
 
     salary.addEventListener('input', updateDailyIncome);
     days.addEventListener('input', updateDailyIncome);
@@ -147,13 +155,13 @@
       const income = workType.value === 'full' ? dailyIncome.value : todayIncome.value;
       const reason = document.getElementById('reason').value;
 
-      if (!userInfoStored) {
-        userInfo = {
-          name: document.getElementById('name').value,
-          salary: document.getElementById('salary').value,
-          days: document.getElementById('days').value
-        };
-        userInfoStored = true;
+      // Save user static info only once
+      const user = JSON.parse(localStorage.getItem('userInfo'));
+      if (!user) {
+        const name = nameField.value;
+        const sal = salary.value;
+        const d = days.value;
+        localStorage.setItem('userInfo', JSON.stringify({ name, salary: sal, days: d }));
       }
 
       if (date && income) {
@@ -170,16 +178,17 @@
       const output = document.getElementById('output');
       output.innerHTML = '';
       const savedData = JSON.parse(localStorage.getItem('dailyIncomeData')) || [];
+      const user = JSON.parse(localStorage.getItem('userInfo'));
 
-      if (savedData.length === 0) {
+      if (!savedData.length) {
         output.innerHTML = '<p>No data to display.</p>';
         return;
       }
 
-      if (userInfoStored) {
-        output.innerHTML += `<p>Name: ${userInfo.name}</p>`;
-        output.innerHTML += `<p>Salary: ₹${userInfo.salary}</p>`;
-        output.innerHTML += `<p>Monthly Job Days: ${userInfo.days}</p>`;
+      if (user) {
+        output.innerHTML += `<p>Name: ${user.name}</p>`;
+        output.innerHTML += `<p>Salary: ₹${user.salary}</p>`;
+        output.innerHTML += `<p>Monthly Job Days: ${user.days}</p>`;
         output.innerHTML += '<hr />';
       }
 
@@ -207,6 +216,18 @@
       let y = 10;
       doc.setFontSize(12);
       const savedData = JSON.parse(localStorage.getItem('dailyIncomeData')) || [];
+      const user = JSON.parse(localStorage.getItem('userInfo'));
+      if (user) {
+        doc.text(`Name: ${user.name}`, 10, y);
+        y += 10;
+        doc.text(`Salary: ₹${user.salary}`, 10, y);
+        y += 10;
+        doc.text(`Monthly Job Days: ${user.days}`, 10, y);
+        y += 10;
+        doc.text(`-------------------------`, 10, y);
+        y += 10;
+      }
+
       let total = 0;
       savedData.forEach(item => {
         if (y > 270) {
@@ -223,8 +244,7 @@
 
     document.getElementById('incomeForm').addEventListener('reset', () => {
       localStorage.removeItem('dailyIncomeData');
-      userInfoStored = false;
-      userInfo = {};
+      localStorage.removeItem('userInfo');
       document.getElementById('output').innerHTML = '';
     });
   </script>
